@@ -1,0 +1,1 @@
+export { PairData } from "./pair-data.model";
