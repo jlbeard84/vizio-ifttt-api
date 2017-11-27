@@ -10,16 +10,24 @@ export class Store {
     private pairData: PairData;
 
     constructor() {
-        this.readFile();
+        this.readFile().then(() => {
+            console.log("Store created");
+        });
      }
 
-    public getPairData(): PairData {
+    public getPairData(): Promise<PairData> {
         
-        if (!this.pairData) {
-            this.readFile();
-        }
-
-        return this.pairData;
+        const promise = new Promise<PairData>((resolve, reject) => {
+            if (!this.pairData) {
+                this.readFile().then(() => {
+                    resolve(this.pairData);
+                }, (err) => {
+                    reject(err);
+                });
+            }
+        });
+        
+        return promise;
     }
 
     public updatePairData(
@@ -42,25 +50,36 @@ export class Store {
         );
     }
 
-    private readFile(): void {
-        fs.open(storeFileName, 'r', (err, fileData) => {
+    private generateDeviceId(): string {
+        const id = `tv-${new Date().getTime()}`;
+        return id;
+    }
 
-            if (err) {
-                if (err.code === 'ENOENT') {
-                    this.pairData = new PairData();
-                    return;
-                }
-            }
+    private readFile(): Promise<{}> {
+
+        const promise = new Promise((resolve, reject) => {
             
-            fs.readFile(fileData, defaultEncoding, (err, data) => {
+            fs.open(storeFileName, 'r', (err, fileData) => {
 
-                if (err){
-                    console.log(err);
-                } else {
+                if (err) {
+                    if (err.code === 'ENOENT') {
+                        this.pairData = new PairData();
+                        resolve();
+                    }
+                }
+                
+                fs.readFile(fileData, defaultEncoding, (err, data) => {
 
-                    let parsedData = JSON.parse(data);
-                    this.pairData = parsedData;
-            }});
+                    if (err){
+                        reject(err);
+                    } else {
+                        const parsedData = JSON.parse(data);
+                        this.pairData = parsedData;
+                        resolve();
+                }});
+            });
         });
+
+        return promise;
     }
 }

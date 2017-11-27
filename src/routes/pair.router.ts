@@ -4,7 +4,7 @@ import * as smartcast from "vizio-smart-cast";
 
 import { Pair, PairRequest } from '../models';
 import Globals from "../globals";
-import { currentId } from 'async_hooks';
+import { PairData } from '../models/pair-data.model';
 
 export class PairRouter {
 
@@ -25,18 +25,18 @@ export class PairRouter {
         response: Response,
         next: NextFunction): void {
 
-        let pairRequest = request.body as PairRequest;
+        const pairRequest = request.body as PairRequest;
 
         if (!pairRequest) {
             response.sendStatus(400);
         }
 
         const vizioCast = new smartcast(pairRequest.ip) as any;
+        Globals.tv = vizioCast;
 
-        vizioCast.pairing.initiate().then((pairResponse) => {
+        //TODO: handle error
+        Globals.tv.pairing.initiate().then((pairResponse) => {
             Globals.store.updatePairData(pairRequest.ip, "");
-            
-            console.log(pairResponse);
             response.send(pairResponse);
         });
     }
@@ -52,22 +52,26 @@ export class PairRouter {
             response.sendStatus(400);
         }
 
-        const currentIP = Globals.store.getPairData().ip;
-        const vizioCast = new smartcast(currentIP);
-
-        console.log(currentIP);
-
-        vizioCast.pairing.pair(pair.pin).then((pairResponse: any) => {
-            
-            Globals.store.updatePairData(
-                currentIP,
-                pairResponse.ITEM.AUTH_TOKEN);
-
-            response.send(Globals.store.getPairData());
-        }, (reason: any) => {
-            console.log(reason);
-            console.log(pair);
+        if (!Globals.tv) {
             response.sendStatus(500);
+        }
+
+        const currentIP = Globals.store.getPairData().then((pairData: PairData) => {
+
+            Globals.tv.pairing.pair(pair.pin).then((pairResponse: any) => {
+                
+                Globals.store.updatePairData(
+                    pairData.ip,
+                    pairResponse.ITEM.AUTH_TOKEN);
+    
+                Globals.tv = new smartcast(pairData.ip, pairResponse.ITEM.AUTH_TOKEN);
+    
+                response.send(Globals.store.getPairData());
+            }, (reason: any) => {
+                console.log(reason);
+                console.log(pair);
+                response.sendStatus(500);
+            });
         });
     }
 }

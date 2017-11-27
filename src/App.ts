@@ -5,6 +5,8 @@ import * as bodyParser from 'body-parser';
 
 import DiscoverRouter from "./routes/discover.router";
 import PairRouter from "./routes/pair.router";
+import PowerRouter from "./routes/power.router";
+
 import { Store } from './Store';
 
 class App {
@@ -26,6 +28,7 @@ class App {
     private routes(): void {
         this.express.use('/api/discover', DiscoverRouter);
         this.express.use("/api/pair", PairRouter);
+        this.express.use("/api/power", PowerRouter);
     }
 }
 
